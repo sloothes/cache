@@ -8,7 +8,7 @@
     <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
     <meta name="description" contents="">
 
-    <title>CacheGallery-Textures</title>
+    <title>Cache Gallery</title>
 
     <link rel="stylesheet" href="/css/bootstrap.min.css">
     <link rel="stylesheet" href="/css/bootbox-dialoges.css">
@@ -203,26 +203,24 @@ socket.on("connect", function(status){
     var currentpage = 0;
     var currentindex = 0;
 
-	var cache;
-
-	caches.open("textures").then(function(storage){
-		cache = storage; // important!
-	});
-
 //  Signals.
 
     var Signal = signals.Signal;
 
     function count(){
-        return cache.keys().then(function(array){
-			return array.length;
-        }).then(function(k){
-            max = k; debugMode && console.log("max:", max);
-        }).then(function(){
-            $(catalogItemsPanel).find(".count").text(max);
-        }).catch(function(err){
-            console.error(err);
-        });
+
+		caches.open("textures").then(function(cache){
+		   cache.keys().then(function(requests){
+				return requests.length;
+			}).then(function(k){
+				max = k; debugMode && console.log("max:", max);
+			}).then(function(){
+				$(catalogItemsPanel).find(".count").text(max);
+			}).catch(function(err){
+				console.error(err);
+			});
+		});
+
     }
 
     function reset(){
@@ -255,130 +253,108 @@ socket.on("connect", function(status){
 
     function get_items(){
 
-        socket.emit("mongo find", {
-            selectors: {},
-            collection: "textures",
-            options: { skip:skip, limit:limit }
-        }, function(err, docs){
-            debugMode && console.log("docs:", docs);
+		caches.open("textures").then(function(cache){
+		   cache.keys().then(function(requests){
 
-            if ( !docs.length ) return;
+				$(displayObjects).children().remove();
 
-            caches.open("textures").then(function(cache){
+				requests.forEach(function(request, index){
 
-                $(displayObjects).children().remove();
+					var src = request.url; // important!
 
-                docs.forEach(function(doc, index){
+					var img = new Image();
+					img.index = index;
+					img.classList.add("thumbnail");
+					img.title = doc.title || doc.name; 
+					img.style.cssText = "display:none;width:22.8rem;height:auto;background:none;border:none;";
+					$(img).on("load", function(){
+						img.style.display = "inline-block"; // important!
+						if ( img.src.startsWith("blob:") ) {
+							URL.revokeObjectURL(img.src);
+						}
+					});
 
-                    var src = doc.link || doc.url; // important!
+					$(displayObjects).append(img); // important!
 
-                    var img = new Image();
-                    img.index = index;
-                    img.classList.add("thumbnail");
-                    img.title = doc.title || doc.name; 
-                    img.style.cssText = "display:none;width:22.8rem;height:auto;background:none;border:none;";
-                //  img.src = doc.link;
-                    $(img).on("load", function(){
-                        img.style.display = "inline-block"; // important!
-                    //  $(displayObjects).append(img); // debugging!
-                        if ( img.src.startsWith("blob:") ) {
-                            URL.revokeObjectURL(img.src);
-                        }
-                    });
+					cache.match(src).then(function(response){
 
-                    $(displayObjects).append(img); // important!
+						return response.blob();
 
-                    cache.match(src).then(function(response){
-                        if (response) return response.blob();
-                        else return cache.add(src).then(function(){
-                            return cache.match(src).then(function(response){
-                                return response.blob();
-                            });
-                        });
+					}).then(function(blob){
 
-                    }).then(function(blob){
+						if (blob) 
+							img.src = URL.createObjectURL(blob);
+						else 
+							img.src = src;
 
-                        if (blob) img.src = URL.createObjectURL(blob);
-                        else img.src = src; // `https://i.imgur.com/${doc.id}.jpg`;
+						$(img).on("click", function(){
 
-                        $(img).on("click", function(){
+							var pswp = $(".pswp").get(0);
+							var psui = PhotoSwipeUI_Default;
 
-                            var pswp = $(".pswp").get(0);
-                            var psui = PhotoSwipeUI_Default;
+							var options = { index: img.index }; // start at selected index slide.
+						//  read more about options: https://photoswipe.com/documentation/options.html
 
-                            var options = { index: img.index }; // start at selected index slide.
-                        //  read more about options: https://photoswipe.com/documentation/options.html
+							//  Collect items.
 
-                        //  Collect items.
+							var promises = []; // build items array.
 
-                            var promises = []; // build items array.
+							requests.forEach(function(request, index){
 
-                            docs.forEach(function(data, index){
+								var url = request.url;
 
-                                var url = data.link || data.url;
+								promises.push(
+									(function(){
+										return cache.match(url).then(function(response){
+											return response.blob();
+										}).then(function(blob){
+											var options = {};
+											options.w = data.width;
+											options.h = data.height;
+											if (blob) options.src = URL.createObjectURL(blob);
+											else options.src = url;
+											return options;
 
-                                promises.push(
-                                    (function(){
-                                        return cache.match(url).then(function(response){
-                                            if (response) return response.blob();
-                                            else return cache.add(url).then(function(){
-                                                return cache.match(url).then(function(response){
-                                                    return response.blob();
-                                                });
-                                            });
+										}).catch(function(err){
+											console.error(err);
+										});
+									})() // do not use ";"
+								); // end of push.
+							}); // end of forEach.
 
-                                        }).then(function(blob){
-                                        //  debugMode && console.log(blob);
+						//  debugMode && console.log(promises);
 
-                                            var options = {};
-                                            options.w = data.width;
-                                            options.h = data.height;
-                                            if (blob) options.src = URL.createObjectURL(blob);
-                                            else options.src = url;
-                                            return options;
+							Promise.all(promises).then(function(items){
 
-                                        }).catch(function(err){
-                                            console.error(err);
-                                        });
-                                    })() // do not use ";"
-                                ); // end of push.
+								var gallery = new PhotoSwipe( pswp, psui, items, options );
 
-                            }); // end of forEach.
+								gallery.listen("close", function() { 
+									gallery.items.forEach(function(item, index){
+										if ( item.src.startsWith("blob:") ) {
+											URL.revokeObjectURL(item.src);
+											debugMode && console.log( "revoked:", item.src );
+										}
+									});
+								});
 
-                        //  debugMode && console.log(promises);
+								gallery.init(); // important!
 
-                            Promise.all(promises).then(function(items){
+							//  currentIndex = gallery.itemHolders[1].index;
+								debugMode && console.log({"gallery": gallery});
 
-                                var gallery = new PhotoSwipe( pswp, psui, items, options );
+							});
 
-                                gallery.listen("close", function() { 
-                                    gallery.items.forEach(function(item, index){
-                                    //  debugMode && console.log( item );
-                                        if ( item.src.startsWith("blob:") ) {
-                                            URL.revokeObjectURL(item.src);
-                                            debugMode && console.log( "revoked:", item.src );
-                                        }
-                                    });
-                                });
+						});
 
-                                gallery.init(); // important!
+					});
 
-                            //  currentIndex = gallery.itemHolders[1].index;
-                                debugMode && console.log({"gallery": gallery});
+				});
 
-                            });
+			}).catch(function(err){
+				console.error(err);
+			});
 
-                        });
-
-                    });
-
-                });
-
-            }).catch(function(err){
-                console.error(err);
-            });
-
-        });
+		});
 
     }
 
