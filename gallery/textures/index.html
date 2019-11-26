@@ -168,7 +168,7 @@
     var selectors;
     var delay = 200;
 
-    var limit = 24;
+    var limit = 20;
 
     var max = 0;
     var skip = 0;
@@ -227,7 +227,11 @@
     function get_items(){
 
 		caches.open("textures").then(function(cache){
-		   cache.keys().then(function(requests){
+		   cache.keys().then(function( requests ){
+
+			   return requests.slice( skip, skip+limit ); // important!
+
+		   }).then(function( requests ){
 
 				$(displayObjects).children().remove();
 
