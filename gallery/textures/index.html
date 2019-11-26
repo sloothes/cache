@@ -286,8 +286,8 @@
 											return response.blob();
 										}).then(function(blob){
 											var options = {};
-											options.w = data.width;
-											options.h = data.height;
+											options.w = img.width;
+											options.h = img.height;
 											if (blob) options.src = URL.createObjectURL(blob);
 											else options.src = url;
 											return options;
