@@ -238,7 +238,7 @@
 					var img = new Image();
 					img.index = index;
 					img.classList.add("thumbnail");
-					img.title = doc.title || doc.name; 
+					img.title = src; 
 					img.style.cssText = "display:none;width:22.8rem;height:auto;background:none;border:none;";
 					$(img).on("load", function(){
 						img.style.display = "inline-block"; // important!
