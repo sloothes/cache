@@ -163,10 +163,8 @@
     const counter = $(catalogItemsPanel).find("#counter").get(0);
     const counterRT = $(catalogItemsPanel).find("#counter-right-top").get(0);
 
-    var timeout;
     var interval;
-    var selectors;
-    var delay = 200;
+    var delay = 250;
 
     var limit = 20;
 
@@ -183,7 +181,7 @@
     function count(){
 
 		return caches.open("textures").then(function(cache){
-		   cache.keys().then(function(requests){
+			return cache.keys().then(function(requests){
 				return requests.length;
 			}).then(function(k){
 				max = k; debugMode && console.log("max:", max);
@@ -191,6 +189,8 @@
 				$(catalogItemsPanel).find(".count").text(max);
 			}).catch(function(err){
 				console.error(err);
+			}).then(function(){
+				return max;
 			});
 		});
 
