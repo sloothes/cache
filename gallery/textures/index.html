@@ -140,6 +140,8 @@
 
 (function(){
 
+	const name = "textures";
+
 //  Pager.
 
     const pager  = document.getElementById("gallery-catalog-pager");
@@ -180,7 +182,7 @@
 
     function count(){
 
-		return caches.open("textures").then(function(cache){
+		return caches.open( name ).then(function(cache){
 			return cache.keys().then(function(requests){
 				return requests.length;
 			}).then(function(k){
@@ -226,7 +228,7 @@
 
     function get_items(){
 
-		caches.open("textures").then(function(cache){
+		caches.open( name ).then(function(cache){
 		   cache.keys().then(function( requests ){
 
 			   return requests.slice( skip, skip+limit ); // important!
